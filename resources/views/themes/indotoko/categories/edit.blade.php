@@ -1,4 +1,4 @@
-@extends('themes.indotoko.layouts.app')
+@extends('themes.indotoko.layouts.admin')
 
 @section('title', 'Edit Kategori')
 

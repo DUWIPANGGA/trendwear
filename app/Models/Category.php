@@ -2,12 +2,16 @@
 
 namespace App\Models;
 
+use App\Traits\UuidTrait;
+use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Category extends Model
 {
-    use HasFactory;
+       use HasApiTokens, HasFactory, Notifiable, UuidTrait;
+
 
     protected $table = 'shop_categories';
 

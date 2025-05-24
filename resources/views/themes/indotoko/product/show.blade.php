@@ -8,7 +8,7 @@
     <div class="card-header">
         <h3 class="card-title">Product Detail</h3>
         <div class="card-tools">
-            <a href="{{ route('products.edit', $product->id) }}" class="btn btn-warning">
+            <a href="{{ route('product.edit', $product->id) }}" class="btn btn-warning">
                 <i class="fas fa-edit"></i> Edit
             </a>
         </div>
@@ -42,12 +42,12 @@
                         <table class="table table-sm">
                             <tr>
                                 <th>Regular Price</th>
-                                <td>{{ format_currency($product->price) }}</td>
+                                <td>{{ $product->price }}</td>
                             </tr>
                             @if($product->sale_price)
                             <tr>
                                 <th>Sale Price</th>
-                                <td class="text-danger">{{ format_currency($product->sale_price) }}</td>
+                                <td class="text-danger">{{ $product->sale_price }}</td>
                             </tr>
                             @endif
                         </table>

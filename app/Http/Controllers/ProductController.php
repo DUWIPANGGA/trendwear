@@ -3,9 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
+use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
 class ProductController extends Controller
 {
@@ -28,62 +28,68 @@ class ProductController extends Controller
      */
     public function create()
     {
-        return $this->loadTheme('product.create');
+        $isEdit = false;
+        return $this->loadTheme('product.create',compact('isEdit'));
     }
 
     /**
      * Store a newly created product in storage.
      */
     public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'sku' => 'required|string|max:100|unique:products,sku',
-            'type' => 'required|in:simple,variable,grouped',
-            'price' => 'required|numeric|min:0',
-            'sale_price' => 'nullable|numeric|min:0|lt:price',
-            'status' => 'required|in:draft,publish,archive',
-            'stock_status' => 'required|in:in_stock,out_of_stock,on_backorder',
-            'weight' => 'nullable|numeric|min:0',
-            'publish_date' => 'nullable|date',
-            'excerpt' => 'nullable|string',
-            'body' => 'nullable|string',
-            'featured_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-        ]);
+{
+    $validated = $request->validate([
+        'name' => 'required|string|max:255',
+        'sku' => 'required|string|max:100|unique:shop_products,sku',
+        'type' => 'required|in:simple,variable,grouped',
+        'price' => 'required|numeric|min:0',
+        'sale_price' => 'nullable|numeric|min:0|lt:price',
+        'status' => 'required|in:draft,publish,archive',
+        'stock_status' => 'required|in:in_stock,out_of_stock,on_backorder',
+        'weight' => 'nullable|numeric|min:0',
+        'publish_date' => 'nullable|date',
+        'excerpt' => 'nullable|string',
+        'body' => 'nullable|string',
+        'featured_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+    ]);
 
-        // Handle file upload
-        if ($request->hasFile('featured_image')) {
-            $validated['featured_image'] = $request->file('featured_image')->store('products', 'public');
-        }
-
-        // Generate slug
-        $validated['slug'] = Str::slug($request->name);
-        $validated['user_id'] = auth()->id();
-
-        // Create product
-        $product = Product::create($validated);
-
-        return redirect()->route('product.index')
-            ->with('success', 'Product created successfully.');
+    // Handle file upload
+    if ($request->hasFile('featured_image')) {
+        $validated['featured_image'] = $request->file('featured_image')->store('products', 'public');
     }
+
+    // Generate slug
+    $validated['slug'] = Str::slug($request->name);
+    $validated['user_id'] = auth()->id();
+
+    // Create product
+    $product = Product::create($validated);
+
+    return redirect()->route('product.index')
+        ->with('success', 'Product created successfully.');
+}
+
 
     /**
      * Display the specified product.
      */
-    public function show(Product $product)
-    {
-        return $this->loadTheme('product.show', [
-            'product' => $product->load('user')
-        ]);
-    }
+    public function show($id)
+{
+    $product = \App\Models\Product::findOrFail($id);
+    
+    return $this->loadTheme('product.show', [
+        'product' => $product
+    ]);
+}
 
     /**
      * Show the form for editing the specified product.
      */
-    public function edit(Product $product)
+    public function edit(Product $id)
     {
+        $isEdit = true;
         return $this->loadTheme('product.edit', [
-            'product' => $product
+            'product' => $id,
+            'isEdit' => $isEdit
         ]);
     }
 
@@ -94,7 +100,7 @@ class ProductController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'sku' => 'required|string|max:100|unique:products,sku,'.$product->id,
+            'sku' => 'required|string|max:100|unique:shop_products,sku,'.$product->id,
             'type' => 'required|in:simple,variable,grouped',
             'price' => 'required|numeric|min:0',
             'sale_price' => 'nullable|numeric|min:0|lt:price',
@@ -123,7 +129,7 @@ class ProductController extends Controller
 
         $product->update($validated);
 
-        return redirect()->route('products.index')
+        return redirect()->route('product.index')
             ->with('success', 'Product updated successfully.');
     }
 

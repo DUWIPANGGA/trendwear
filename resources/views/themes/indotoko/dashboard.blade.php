@@ -3,7 +3,7 @@
 @section('title', 'Admin Dashboard')
 
 @section('content')
-<div class="ml-0 lg:ml-64 pt-16 min-h-screen">
+<div class="ml-0 lg:ml-2 pt-16 min-h-screen">
     <div class="p-4 md:p-6">
         <!-- Header -->
         <div class="flex justify-between items-center mb-6">

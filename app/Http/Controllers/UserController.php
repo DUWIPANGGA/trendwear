@@ -16,7 +16,8 @@ class UserController extends Controller
 
     public function create()
     {
-        return view('themes.indotoko.users.create');
+        $isEdit = false;
+        return view('themes.indotoko.users.create',compact('isEdit'));
     }
 
     public function store(Request $request)
@@ -38,7 +39,8 @@ class UserController extends Controller
 
     public function edit(User $user)
     {
-        return view('themes.indotoko.users.edit', compact('user'));
+        $isEdit = true;
+        return view('themes.indotoko.users.edit', compact(['user', 'isEdit']));	
     }
 
     public function update(Request $request, User $user)

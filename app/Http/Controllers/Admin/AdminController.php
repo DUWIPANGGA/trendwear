@@ -1,28 +1,20 @@
 <?php
 
-namespace App\Livewire\Admin;
+namespace App\Http\Controllers\Admin;
 
-use Livewire\Component;
+use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\User;
 use App\Models\ActivityLog;
-use Carbon\Carbon;
+use Illuminate\Support\Carbon;
+use Illuminate\Http\Request;
 
-class Dashboard extends Component
+class AdminController extends Controller
 {
-    public $salesData;
-    public $revenueData;
-    
-    public function mount()
+    public function dashboard()
     {
-        // Prepare data for charts
-        $this->prepareChartData();
-    }
-
-    protected function prepareChartData()
-    {
-        // Last 30 days sales data
+        // Sales data (last 30 days)
         $sales = Order::where('created_at', '>=', now()->subDays(30))
             ->selectRaw('DATE(created_at) as date, COUNT(*) as count')
             ->groupBy('date')
@@ -30,7 +22,12 @@ class Dashboard extends Component
             ->get()
             ->pluck('count', 'date');
 
-        // Last 30 days revenue data
+        $salesData = [
+            'labels' => $sales->keys()->map(fn($date) => Carbon::parse($date)->format('d M'))->toArray(),
+            'data' => $sales->values()->toArray()
+        ];
+
+        // Revenue data (last 30 days)
         $revenue = Order::where('created_at', '>=', now()->subDays(30))
             ->selectRaw('DATE(created_at) as date, SUM(grand_total) as amount')
             ->groupBy('date')
@@ -38,19 +35,12 @@ class Dashboard extends Component
             ->get()
             ->pluck('amount', 'date');
 
-        $this->salesData = [
-            'labels' => $sales->keys()->map(fn($date) => Carbon::parse($date)->format('d M'))->toArray(),
-            'data' => $sales->values()->toArray()
-        ];
-
-        $this->revenueData = [
+        $revenueData = [
             'labels' => $revenue->keys()->map(fn($date) => Carbon::parse($date)->format('d M'))->toArray(),
             'data' => $revenue->values()->toArray()
         ];
-    }
 
-    public function render()
-    {
+        // Stats
         $stats = [
             'total_sales' => [
                 'value' => Order::where('status', 'completed')->sum('grand_total'),
@@ -67,30 +57,22 @@ class Dashboard extends Component
             'new_orders' => Order::where('status', 'pending')->count()
         ];
 
-        $recentOrders = Order::with('customer')
-            ->latest()
-            ->take(5)
-            ->get();
-
+        $recentOrders = Order::with('customer')->latest()->take(5)->get();
         $topProducts = Product::with('category')
             ->withCount('orderItems')
             ->orderByDesc('order_items_count')
             ->take(5)
             ->get();
+        $recentActivities = ActivityLog::with('user')->latest()->take(5)->get();
 
-        $recentActivities = ActivityLog::with('user')
-            ->latest()
-            ->take(5)
-            ->get();
-
-        return view('themes.indotoko.dashboard', [
-            'stats' => $stats,
-            'recentOrders' => $recentOrders,
-            'topProducts' => $topProducts,
-            'recentActivities' => $recentActivities,
-            'salesData' => $this->salesData,
-            'revenueData' => $this->revenueData
-        ]);
+        return view('themes.indotoko.dashboard', compact(
+            'stats',
+            'recentOrders',
+            'topProducts',
+            'recentActivities',
+            'salesData',
+            'revenueData'
+        ));
     }
 
     protected function getSalesChangePercentage()

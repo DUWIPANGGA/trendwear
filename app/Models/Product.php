@@ -2,17 +2,21 @@
 
 namespace App\Models;
 
+use App\Traits\UuidTrait;
+use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Product extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasApiTokens, HasFactory, Notifiable, UuidTrait;
 
     protected $table = 'shop_products';
 
     protected $fillable = [
+        'id',	
         'user_id',
         'sku',
         'type',
@@ -36,6 +40,10 @@ class Product extends Model
         'metas' => 'array',
         'publish_date' => 'datetime',
     ];
+public function category()
+{
+    return $this->belongsTo(Category::class, 'category_id');
+}
 
     // Relasi ke user (pemilik produk)
     public function user()
@@ -60,4 +68,8 @@ class Product extends Model
     {
         return $this->hasOne(Stock::class);
     }
+    public function orderItems()
+{
+    return $this->hasMany(OrderItem::class);
+}
 }
