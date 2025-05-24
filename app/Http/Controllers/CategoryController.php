@@ -89,17 +89,25 @@ class CategoryController extends Controller
     /**
      * Remove the specified category from storage.
      */
-    public function destroy(Category $category)
-    {
-        // Cek jika kategori memiliki subkategori
-        if ($category->children()->count() > 0) {
-            return redirect()->back()
-                ->with('error', 'Cannot delete category because it has subcategories.');
-        }
+   public function destroy(Category $category)
+{
+    if ($category->children()->count() > 0) {
+        return redirect()->back()->with('error', 'Tidak bisa menghapus kategori karena memiliki subkategori.');
+    }
 
+    try {
+        // Putuskan relasi many-to-many di pivot
+        $category->products()->detach();
+
+        // Hapus kategori
         $category->delete();
 
-        return redirect()->route('categories.index')
-            ->with('success', 'Category deleted successfully.');
+        return redirect()->route('categories.index')->with('success', 'Kategori berhasil dihapus.');
+    } catch (\Exception $e) {
+        return redirect()->back()->with('error', 'Gagal menghapus kategori: ' . $e->getMessage());
     }
+}
+
+
+
 }
