@@ -15,8 +15,8 @@ jobs:
         env:
           MYSQL_ROOT_PASSWORD: root
           MYSQL_DATABASE: trendwear
-          MYSQL_USER: polindra
-          MYSQL_PASSWORD: polindra
+          MYSQL_USER: dbeaver
+          MYSQL_PASSWORD: @Polindra123
         ports:
           - 3306:3306
         options: >-
