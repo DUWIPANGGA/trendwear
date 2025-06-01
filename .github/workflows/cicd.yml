@@ -100,7 +100,7 @@ jobs:
   deploy:
     needs: build-test
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/master' # Assuming 'main' is your primary branch
 
     steps:
     - name: Download artifact
@@ -109,61 +109,62 @@ jobs:
         name: laravel-app
         path: ./deploy
 
-    - name: USING SSH to deploy
+    - name: Deploy to server via SSH (Host + Password)
       uses: appleboy/ssh-action@v0.1.7
       with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          password: ${{ secrets.SSH_KEY_PASSWORD }}
-          port: 22
+        host: ${{ secrets.SSH_HOST }}        # Your server's IP address or hostname
+        username: ${{ secrets.SSH_USER }}    # The SSH username
+        password: ${{ secrets.SSH_PASSWORD }} # <--- Use this for the SSH password
+        port: 22                             # Your SSH port (default is 22)
+        # All commands below will be executed on the remote server
+        script: |
+          # Create temporary directory on the server
+          mkdir -p ~/laravel-d4rpl2c-kelompok9
 
-    - name: Deploy to server via SCP/SSH PASSWORD
-      
-      run: |
-        # Buat direktori sementara di server
-        ssh -o StrictHostKeyChecking=no -p 22 ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "mkdir -p ~/laravel-d4rpl2c-kelompok9"
+          # Transfer files from the GitHub Actions runner (where the artifact was downloaded)
+          # to the temporary directory on the remote server.
+          # The '.' after './deploy' means copy the *contents* of the 'deploy' directory.
+          scp -o StrictHostKeyChecking=no -r ./deploy/. ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:~/laravel-d4rpl2c-kelompok9/
 
-        # Upload files ke server (asumsi folder deploy ada di repo kamu)
-        scp -o StrictHostKeyChecking=no -P 22 -r ./deploy.sh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:~/laravel-d4rpl2c-kelompok9/
-
-        # Jalankan deployment script di server
-        ssh -o StrictHostKeyChecking=no -p 22 ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
-          # Pindah ke folder sementara
+          # --- Start remote server deployment script ---
+          # Change to the temporary folder
           cd ~/laravel-d4rpl2c-kelompok9 || exit
 
-          # Backup existing deployment (optional)
+          # Optional: Backup existing deployment
+          # You might need to create the /backup directory and ensure permissions.
           # tar -czf /backup/laravel-backup-$(date +"%Y%m%d%H%M%S").tar.gz /var/www/laravel-d4rpl2c-kelompok9
 
-          # Copy files ke folder produksi dengan rsync (exclude file sensitif & storage)
+          # Copy files to the production folder using rsync
+          # Exclude sensitive files like .env and dynamic content in storage
           sudo rsync -avz --delete \
             --exclude='.env' \
             --exclude='storage' \
             --exclude='.git' \
             --exclude='.github' \
-            ~/laravel-d4rpl2c-kelompok9/ /var/www/laravel-d4rpl2c-kelompok9/
+            ./ /var/www/laravel-d4rpl2c-kelompok9/ # Source is the current temporary directory on the server
 
-          # Bikin folder storage/framework dan logs kalau belum ada
+          # Create necessary storage directories if they don't exist
           sudo mkdir -p /var/www/laravel-d4rpl2c-kelompok9/storage/framework/{cache,sessions,testing,views}
           sudo mkdir -p /var/www/laravel-d4rpl2c-kelompok9/storage/logs
 
-          # Set permission yang bener biar web server bisa akses
+          # Set correct permissions for web server access
           sudo chown -R www-data:www-data /var/www/laravel-d4rpl2c-kelompok9/storage
           sudo chown -R www-data:www-data /var/www/laravel-d4rpl2c-kelompok9/bootstrap/cache
           sudo chmod -R 775 /var/www/laravel-d4rpl2c-kelompok9/storage
           sudo chmod -R 775 /var/www/laravel-d4rpl2c-kelompok9/bootstrap/cache
 
-          # Masuk ke folder produksi
+          # Change to the production folder
           cd /var/www/laravel-d4rpl2c-kelompok9 || exit
 
-          # Jalankan perintah composer & artisan sebagai user www-data
+          # Run composer and artisan commands as the web server user
           sudo -u www-data composer install --optimize-autoloader --no-dev
           sudo -u www-data php artisan config:cache
           sudo -u www-data php artisan route:cache
           sudo -u www-data php artisan view:cache
           sudo -u www-data php artisan migrate --force
 
-          # Bersihin folder deploy sementara di home
+          # Clean up the temporary deploy folder in the home directory
           rm -rf ~/laravel-d4rpl2c-kelompok9
 
           echo "Deployment selesai!"
-        EOF
+          EOF
