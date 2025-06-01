@@ -49,12 +49,6 @@ jobs:
         sed -i 's/^DB_DATABASE=.*/DB_DATABASE=trendwear/' .env
         sed -i 's/^DB_USERNAME=.*/DB_USERNAME=dbeaver/' .env
         sed -i 's/^DB_PASSWORD=.*/DB_PASSWORD=@Polindra123/' .env
-        echo "DB_CONNECTION=mysql" >> .env
-        echo "DB_HOST=127.0.0.1" >> .env
-        echo "DB_PORT=3306" >> .env
-        echo "DB_DATABASE=trendwear" >> .env
-        echo "DB_USERNAME=dbeaver" >> .env
-        echo "DB_PASSWORD=@Polindra123" >> .env
 
     
     - name: Debug database environment
@@ -126,18 +120,18 @@ jobs:
     - name: Deploy to server via SCP/SSH
       run: |
         # Buat direktori sementara di server
-        ssh -o StrictHostKeyChecking=no -p 22 ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "mkdir -p ~/laravel-d4rpl2c-kelompok9"
+        ssh -o StrictHostKeyChecking=no -p 22 ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "mkdir -p ~/laravel-d4rpl2c-kelompok-9"
 
         # Upload files ke server (asumsi folder deploy ada di repo kamu)
-        scp -o StrictHostKeyChecking=no -P 22 -r ./deploy.sh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:~/laravel-d4rpl2c-kelompok9/
+        scp -o StrictHostKeyChecking=no -P 22 -r ./deploy.sh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:~/laravel-d4rpl2c-kelompok-9/
 
         # Jalankan deployment script di server
         ssh -o StrictHostKeyChecking=no -p 22 ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
           # Pindah ke folder sementara
-          cd ~/laravel-d4rpl2c-kelompok9 || exit
+          cd ~/laravel-d4rpl2c-kelompok-9 || exit
 
           # Backup existing deployment (optional)
-          # tar -czf /backup/laravel-backup-$(date +"%Y%m%d%H%M%S").tar.gz /var/www/laravel-d4rpl2c-kelompok9
+          # tar -czf /backup/laravel-backup-$(date +"%Y%m%d%H%M%S").tar.gz /var/www/laravel-d4rpl2c-kelompok-9
 
           # Copy files ke folder produksi dengan rsync (exclude file sensitif & storage)
           sudo rsync -avz --delete \
@@ -145,20 +139,20 @@ jobs:
             --exclude='storage' \
             --exclude='.git' \
             --exclude='.github' \
-            ~/laravel-d4rpl2c-kelompok9/ /var/www/laravel-d4rpl2c-kelompok9/
+            ~/laravel-d4rpl2c-kelompok-9/ /var/www/laravel-d4rpl2c-kelompok-9/
 
           # Bikin folder storage/framework dan logs kalau belum ada
-          sudo mkdir -p /var/www/laravel-d4rpl2c-kelompok9/storage/framework/{cache,sessions,testing,views}
-          sudo mkdir -p /var/www/laravel-d4rpl2c-kelompok9/storage/logs
+          sudo mkdir -p /var/www/laravel-d4rpl2c-kelompok-9/storage/framework/{cache,sessions,testing,views}
+          sudo mkdir -p /var/www/laravel-d4rpl2c-kelompok-9/storage/logs
 
           # Set permission yang bener biar web server bisa akses
-          sudo chown -R www-data:www-data /var/www/laravel-d4rpl2c-kelompok9/storage
-          sudo chown -R www-data:www-data /var/www/laravel-d4rpl2c-kelompok9/bootstrap/cache
-          sudo chmod -R 775 /var/www/laravel-d4rpl2c-kelompok9/storage
-          sudo chmod -R 775 /var/www/laravel-d4rpl2c-kelompok9/bootstrap/cache
+          sudo chown -R www-data:www-data /var/www/laravel-d4rpl2c-kelompok-9/storage
+          sudo chown -R www-data:www-data /var/www/laravel-d4rpl2c-kelompok-9/bootstrap/cache
+          sudo chmod -R 775 /var/www/laravel-d4rpl2c-kelompok-9/storage
+          sudo chmod -R 775 /var/www/laravel-d4rpl2c-kelompok-9/bootstrap/cache
 
           # Masuk ke folder produksi
-          cd /var/www/laravel-d4rpl2c-kelompok9 || exit
+          cd /var/www/laravel-d4rpl2c-kelompok-9 || exit
 
           # Jalankan perintah composer & artisan sebagai user www-data
           sudo -u www-data composer install --optimize-autoloader --no-dev
@@ -168,7 +162,7 @@ jobs:
           sudo -u www-data php artisan migrate --force
 
           # Bersihin folder deploy sementara di home
-          rm -rf ~/laravel-d4rpl2c-kelompok9
+          rm -rf ~/laravel-d4rpl2c-kelompok-9
 
           echo "Deployment selesai!"
         EOF
