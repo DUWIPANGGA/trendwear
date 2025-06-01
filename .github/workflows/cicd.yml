@@ -100,7 +100,7 @@ jobs:
   deploy:
     needs: build-test
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/master' # Assuming 'main' is your primary branch
+    if: github.ref == 'refs/heads/master' 
 
     steps:
     - name: Download artifact
