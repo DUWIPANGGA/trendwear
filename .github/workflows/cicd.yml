@@ -43,12 +43,19 @@ jobs:
     - name: Configure MySQL
       run: |
         cp .env.example .env
-        sed -i 's/DB_CONNECTION=mysql/DB_CONNECTION=mysql/' .env
-        sed -i 's/DB_HOST=127.0.0.1/DB_HOST=127.0.0.1/' .env
-        sed -i 's/DB_PORT=3306/DB_PORT=3306/' .env
-        sed -i 's/DB_DATABASE=laravel/DB_DATABASE=trendwear/' .env
-        sed -i 's/DB_USERNAME=root/DB_USERNAME=dbeaver/' .env
-        sed -i 's/DB_PASSWORD=/DB_PASSWORD=@Polindra123/' .env
+        sed -i 's/^DB_CONNECTION=.*/DB_CONNECTION=mysql/' .env
+        sed -i 's/^DB_HOST=.*/DB_HOST=127.0.0.1/' .env
+        sed -i 's/^DB_PORT=.*/DB_PORT=3306/' .env
+        sed -i 's/^DB_DATABASE=.*/DB_DATABASE=trendwear/' .env
+        sed -i 's/^DB_USERNAME=.*/DB_USERNAME=dbeaver/' .env
+        sed -i 's/^DB_PASSWORD=.*/DB_PASSWORD=@Polindra123/' .env
+        echo "DB_CONNECTION=mysql" >> .env
+        echo "DB_HOST=127.0.0.1" >> .env
+        echo "DB_PORT=3306" >> .env
+        echo "DB_DATABASE=trendwear" >> .env
+        echo "DB_USERNAME=dbeaver" >> .env
+        echo "DB_PASSWORD=@Polindra123" >> .env
+
     
     - name: Debug database environment
       run: grep DB_ .env
