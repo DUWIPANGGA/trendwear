@@ -110,12 +110,13 @@ jobs:
         name: laravel-app
         path: ./deploy
 
-    - name: Install SSH key
-      uses: appleboy/ssh-action
+    - name: USING SSH to deploy
+      uses: appleboy/ssh-action@v0.1.7
       with:
-        password: ${{ secrets.SSH_KEY_PASSWORD }}
-        known_hosts: ${{ secrets.KNOWN_HOSTS }}
-        port: 22
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          password: ${{ secrets.SSH_KEY_PASSWORD }}
+          port: 22
 
     - name: Deploy to server via SCP/SSH
       run: |
