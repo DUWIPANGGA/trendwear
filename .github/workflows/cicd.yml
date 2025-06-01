@@ -6,6 +6,13 @@ on:
   pull_request:
     branches: [ master ]
 
+env:
+  DB_HOST: 127.0.0.1
+  DB_PORT: 3306
+  DB_DATABASE: trendwear
+  DB_USERNAME: polindra
+  DB_PASSWORD: polindra
+
 jobs:
   build-test:
     runs-on: ubuntu-latest
@@ -15,12 +22,12 @@ jobs:
         env:
           MYSQL_ROOT_PASSWORD: root
           MYSQL_DATABASE: trendwear
-          MYSQL_USER: dbeaver
-          MYSQL_PASSWORD: "@Polindra123"
+          MYSQL_USER: polindra
+          MYSQL_PASSWORD: polindra
         ports:
           - 3306:3306
         options: >-
-          --health-cmd "mysqladmin ping -p$$MYSQL_ROOT_PASSWORD"
+          --health-cmd "mysqladmin ping -uroot -proot"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -40,33 +47,25 @@ jobs:
       run: |
         composer install --prefer-dist --no-interaction --no-progress
 
-    - name: Configure MySQL
+    - name: Configure environment
       run: |
         cp .env.example .env
-        sed -i 's/^DB_CONNECTION=.*/DB_CONNECTION=mysql/' .env
-        sed -i 's/^DB_HOST=.*/DB_HOST=127.0.0.1/' .env
-        sed -i 's/^DB_PORT=.*/DB_PORT=3306/' .env
-        sed -i 's/^DB_DATABASE=.*/DB_DATABASE=trendwear/' .env
-        sed -i 's/^DB_USERNAME=.*/DB_USERNAME=dbeaver/' .env
-        sed -i 's/^DB_PASSWORD=.*/DB_PASSWORD=@Polindra123/' .env
-
-    
-    - name: Debug database environment
-      run: grep DB_ .env
-
-    - name: Generate app key
-      run: php artisan key:generate
+        echo "APP_KEY=" >> .env
+        php artisan key:generate
 
     - name: Wait for MySQL to be ready
       run: |
         for i in {1..10}; do
-          if mysqladmin ping -h127.0.0.1 -upolindra -ppolindra --silent; then
+          if mysqladmin ping -h${{ env.DB_HOST }} -u${{ env.DB_USERNAME }} -p${{ env.DB_PASSWORD }} --silent; then
             echo "MySQL is ready!"
             break
           fi
           echo "Waiting for MySQL... Attempt $i/10"
           sleep 3
         done
+
+    - name: Run migrations
+      run: php artisan migrate:fresh --seed
 
     - name: Setup Node.js
       uses: actions/setup-node@v4
@@ -79,13 +78,10 @@ jobs:
     - name: Build frontend
       run: npm run build
 
-    - name: Run database migrations and seed
-      run: php artisan migrate:fresh --seed
-
     - name: Execute tests
       run: php artisan test
 
-    - name: Upload artifact for deployment
+    - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
         name: laravel-app
@@ -95,7 +91,6 @@ jobs:
           !.git/
           !node_modules/
           !vendor/
-          !storage/debugbar/
         retention-days: 1
 
   deploy:
@@ -110,59 +105,48 @@ jobs:
         name: laravel-app
         path: ./deploy
 
-    - name: Install SSH key
-      uses: shimataro/ssh-key-action@v2
+    - name: Setup SSH
+      uses: webfactory/ssh-agent@v0.7.0
       with:
-        password: ${{ secrets.SSH_KEY_PASSWORD }}
-        known_hosts: ${{ secrets.KNOWN_HOSTS }}
-        port: 22
+        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-    - name: Deploy to server via SCP/SSH
+    - name: Configure known hosts
       run: |
-        # Buat direktori sementara di server
-        ssh -o StrictHostKeyChecking=no -p 22 ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "mkdir -p ~/laravel-d4rpl2c-kelompok-9"
+        mkdir -p ~/.ssh
+        echo "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+        chmod 600 ~/.ssh/known_hosts
 
-        # Upload files ke server (asumsi folder deploy ada di repo kamu)
-        scp -o StrictHostKeyChecking=no -P 22 -r ./deploy.sh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:~/laravel-d4rpl2c-kelompok-9/
+    - name: Deploy to server
+      run: |
+        # Create temp directory
+        ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "mkdir -p ~/temp-deploy"
 
-        # Jalankan deployment script di server
-        ssh -o StrictHostKeyChecking=no -p 22 ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
-          # Pindah ke folder sementara
-          cd ~/laravel-d4rpl2c-kelompok-9 || exit
+        # Sync files (exclude sensitive files)
+        rsync -avz -e "ssh -o StrictHostKeyChecking=no" \
+          --exclude='.env' \
+          --exclude='.git' \
+          --exclude='storage' \
+          --exclude='node_modules' \
+          ./deploy/ ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:~/temp-deploy/
 
-          # Backup existing deployment (optional)
-          # tar -czf /backup/laravel-backup-$(date +"%Y%m%d%H%M%S").tar.gz /var/www/laravel-d4rpl2c-kelompok-9
-
-          # Copy files ke folder produksi dengan rsync (exclude file sensitif & storage)
-          sudo rsync -avz --delete \
-            --exclude='.env' \
-            --exclude='storage' \
-            --exclude='.git' \
-            --exclude='.github' \
-            ~/laravel-d4rpl2c-kelompok-9/ /var/www/laravel-d4rpl2c-kelompok-9/
-
-          # Bikin folder storage/framework dan logs kalau belum ada
-          sudo mkdir -p /var/www/laravel-d4rpl2c-kelompok-9/storage/framework/{cache,sessions,testing,views}
-          sudo mkdir -p /var/www/laravel-d4rpl2c-kelompok-9/storage/logs
-
-          # Set permission yang bener biar web server bisa akses
+        # Run deployment commands
+        ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
+          # Move to production directory
+          sudo rsync -a --delete ~/temp-deploy/ /var/www/laravel-d4rpl2c-kelompok-9/
+          
+          # Setup permissions
           sudo chown -R www-data:www-data /var/www/laravel-d4rpl2c-kelompok-9/storage
           sudo chown -R www-data:www-data /var/www/laravel-d4rpl2c-kelompok-9/bootstrap/cache
           sudo chmod -R 775 /var/www/laravel-d4rpl2c-kelompok-9/storage
           sudo chmod -R 775 /var/www/laravel-d4rpl2c-kelompok-9/bootstrap/cache
 
-          # Masuk ke folder produksi
-          cd /var/www/laravel-d4rpl2c-kelompok-9 || exit
-
-          # Jalankan perintah composer & artisan sebagai user www-data
-          sudo -u www-data composer install --optimize-autoloader --no-dev
+          # Install dependencies
+          cd /var/www/laravel-d4rpl2c-kelompok-9
+          sudo -u www-data composer install --no-dev --optimize-autoloader
           sudo -u www-data php artisan config:cache
           sudo -u www-data php artisan route:cache
           sudo -u www-data php artisan view:cache
-          sudo -u www-data php artisan migrate --force
-
-          # Bersihin folder deploy sementara di home
-          rm -rf ~/laravel-d4rpl2c-kelompok-9
-
-          echo "Deployment selesai!"
+          
+          # Cleanup
+          rm -rf ~/temp-deploy
         EOF
