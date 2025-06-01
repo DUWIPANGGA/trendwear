@@ -167,4 +167,3 @@ jobs:
           rm -rf ~/laravel-d4rpl2c-kelompok9
 
           echo "Deployment selesai!"
-          EOF
