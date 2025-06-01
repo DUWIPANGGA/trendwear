@@ -2,9 +2,9 @@ name: Laravel CI/CD (MYSQL)
 
 on:
   push:
-    branches: [ master ]
+    branches: [ main ]
   pull_request:
-    branches: [ master ]
+    branches: [ main ]
 
 jobs:
   build-test:
@@ -16,7 +16,7 @@ jobs:
           MYSQL_ROOT_PASSWORD: root
           MYSQL_DATABASE: trendwear
           MYSQL_USER: dbeaver
-          MYSQL_PASSWORD: "@Polindra123"
+          MYSQL_PASSWORD: '@Polindra123'
         ports:
           - 3306:3306
         options: >-
@@ -43,13 +43,12 @@ jobs:
     - name: Configure MySQL
       run: |
         cp .env.example .env
-        sed -i 's/^DB_CONNECTION=.*/DB_CONNECTION=mysql/' .env
-        sed -i 's/^DB_HOST=.*/DB_HOST=127.0.0.1/' .env
-        sed -i 's/^DB_PORT=.*/DB_PORT=3306/' .env
-        sed -i 's/^DB_DATABASE=.*/DB_DATABASE=trendwear/' .env
-        sed -i 's/^DB_USERNAME=.*/DB_USERNAME=dbeaver/' .env
-        sed -i 's/^DB_PASSWORD=.*/DB_PASSWORD=@Polindra123/' .env
-
+        sed -i 's/DB_CONNECTION=mysql/DB_CONNECTION=mysql/' .env
+        sed -i 's/DB_HOST=127.0.0.1/DB_HOST=127.0.0.1/' .env
+        sed -i 's/DB_PORT=3306/DB_PORT=3306/' .env
+        sed -i 's/DB_DATABASE=laravel/DB_DATABASE=tanismart/' .env
+        sed -i 's/DB_USERNAME=root/DB_USERNAME=dbeaver/' .env
+        sed -i 's/DB_PASSWORD=/DB_PASSWORD=@Polindra123/' .env
     
     - name: Debug database environment
       run: grep DB_ .env
@@ -101,7 +100,7 @@ jobs:
   deploy:
     needs: build-test
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/master'
+    if: github.ref == 'refs/heads/main'
 
     steps:
     - name: Download artifact
@@ -110,54 +109,51 @@ jobs:
         name: laravel-app
         path: ./deploy
 
-    - name: Deploy to server via SSH and SCP
+    - name: USING SSH to deploy
       uses: appleboy/ssh-action@v0.1.7
       with:
-        host: ${{ secrets.SSH_HOST }}
-        username: ${{ secrets.SSH_USER }}
-        # It's generally more secure to use an SSH key.
-        # If your SSH_KEY_PASSWORD is for a passphrase-protected key, use key: ${{ secrets.SSH_KEY }}
-        # If it's a direct password for the user, use password: ${{ secrets.SSH_KEY_PASSWORD }}
-        password: ${{ secrets.SSH_KEY_PASSWORD }} # Or key: ${{ secrets.SSH_KEY }} if using an SSH private key
-        port: 22
-        script: |
-          # Create temporary directory on the server
-          mkdir -p ~/laravel-d4rpl2c-kelompok-9
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          password: ${{ secrets.SSH_KEY_PASSWORD }}
+          port: 22
 
-          # Transfer files from the runner to the temporary directory on the server
-          # The 'deploy' directory is where your artifact was downloaded on the runner
-          # 'deploy/' refers to the content *inside* the deploy directory on the runner
-          # '~/laravel-d4rpl2c-kelompok-9/' is the destination on the server
-          scp -o StrictHostKeyChecking=no -r ./deploy/. ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:~/laravel-d4rpl2c-kelompok-9/
+    - name: Deploy to server via SCP/SSH PASSWORD
+      
+      run: |
+        # Buat direktori sementara di server
+        ssh -o StrictHostKeyChecking=no -p 22 ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "mkdir -p ~/laravel-d4rpl2c-kelompok9"
 
-          # Execute deployment script on the server
+        # Upload files ke server (asumsi folder deploy ada di repo kamu)
+        scp -o StrictHostKeyChecking=no -P 22 -r ./deploy.sh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:~/laravel-d4rpl2c-kelompok9/
+
+        # Jalankan deployment script di server
+        ssh -o StrictHostKeyChecking=no -p 22 ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
           # Pindah ke folder sementara
-          cd ~/laravel-d4rpl2c-kelompok-9 || exit
+          cd ~/laravel-d4rpl2c-kelompok9 || exit
 
-          # Backup existing deployment (optional) - ensure /backup directory exists or remove this
-          # tar -czf /backup/laravel-backup-$(date +"%Y%m%d%H%M%S").tar.gz /var/www/laravel-d4rpl2c-kelompok-9
+          # Backup existing deployment (optional)
+          # tar -czf /backup/laravel-backup-$(date +"%Y%m%d%H%M%S").tar.gz /var/www/laravel-d4rpl2c-kelompok9
 
           # Copy files ke folder produksi dengan rsync (exclude file sensitif & storage)
-          # Note: rsync needs to be installed on your server.
           sudo rsync -avz --delete \
             --exclude='.env' \
             --exclude='storage' \
             --exclude='.git' \
             --exclude='.github' \
-            ./ /var/www/laravel-d4rpl2c-kelompok-9/ # Source is now the temporary directory on the server
+            ~/laravel-d4rpl2c-kelompok9/ /var/www/laravel-d4rpl2c-kelompok9/
 
           # Bikin folder storage/framework dan logs kalau belum ada
-          sudo mkdir -p /var/www/laravel-d4rpl2c-kelompok-9/storage/framework/{cache,sessions,testing,views}
-          sudo mkdir -p /var/www/laravel-d4rpl2c-kelompok-9/storage/logs
+          sudo mkdir -p /var/www/laravel-d4rpl2c-kelompok9/storage/framework/{cache,sessions,testing,views}
+          sudo mkdir -p /var/www/laravel-d4rpl2c-kelompok9/storage/logs
 
           # Set permission yang bener biar web server bisa akses
-          sudo chown -R www-data:www-data /var/www/laravel-d4rpl2c-kelompok-9/storage
-          sudo chown -R www-data:www-data /var/www/laravel-d4rpl2c-kelompok-9/bootstrap/cache
-          sudo chmod -R 775 /var/www/laravel-d4rpl2c-kelompok-9/storage
-          sudo chmod -R 775 /var/www/laravel-d4rpl2c-kelompok-9/bootstrap/cache
+          sudo chown -R www-data:www-data /var/www/laravel-d4rpl2c-kelompok9/storage
+          sudo chown -R www-data:www-data /var/www/laravel-d4rpl2c-kelompok9/bootstrap/cache
+          sudo chmod -R 775 /var/www/laravel-d4rpl2c-kelompok9/storage
+          sudo chmod -R 775 /var/www/laravel-d4rpl2c-kelompok9/bootstrap/cache
 
           # Masuk ke folder produksi
-          cd /var/www/laravel-d4rpl2c-kelompok-9 || exit
+          cd /var/www/laravel-d4rpl2c-kelompok9 || exit
 
           # Jalankan perintah composer & artisan sebagai user www-data
           sudo -u www-data composer install --optimize-autoloader --no-dev
@@ -167,7 +163,7 @@ jobs:
           sudo -u www-data php artisan migrate --force
 
           # Bersihin folder deploy sementara di home
-          rm -rf ~/laravel-d4rpl2c-kelompok-9
+          rm -rf ~/laravel-d4rpl2c-kelompok9
 
           echo "Deployment selesai!"
-          EOF
+        EOF
